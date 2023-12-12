@@ -38,3 +38,34 @@ fn main() -> std::io::Result<()> {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use crate::{csm::ApiCall, iam::Statement};
+
+    fn generate_api_call() -> ApiCall {
+        let json = r#"{
+  "Api": "ListObjectsV2",
+  "AttemptCount": 1,
+  "ClientId": "",
+  "FinalHttpStatusCode": 200,
+  "Latency": 356,
+  "MaxRetriesExceeded": 0,
+  "Region": "us-west-2",
+  "Service": "S3",
+  "Timestamp": 1702364837492,
+  "Type": "ApiCall",
+  "UserAgent": "aws-cli/2.13.28 Python/3.11.6 Linux/6.2.6-76060206-generic exe/x86_64.pop.22 prompt/off command/s3.ls",
+  "Version": 1
+}"#;
+        serde_json::from_str::<ApiCall>(&json).unwrap()
+    }
+    #[test]
+    fn from_api_call_to_statement() {
+        let api_call = generate_api_call();
+        let statement: Statement = Statement::from(&api_call);
+        assert_eq!(statement.effect, "Allow");
+        assert_eq!(statement.action[0], "s3:ListBucket");
+        assert_eq!(statement.resource[0], "arn:aws:s3**");
+    }
+}

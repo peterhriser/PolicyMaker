@@ -1,20 +1,53 @@
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Deserialize, Serialize)]
+#[serde(rename_all = "PascalCase")]
 pub struct Statement {
-    #[serde(rename = "Effect")]
     pub effect: String,
-    #[serde(rename = "Action")]
     pub action: Vec<String>,
-    #[serde(rename = "Resource")]
     pub resource: Vec<String>,
 }
+
+impl From<&crate::csm::ApiCall> for Statement {
+    fn from(api_call: &crate::csm::ApiCall) -> Self {
+        let resource = vec![format!("arn::aws::{}**", api_call.service)];
+        Statement {
+            effect: "Allow".to_string(),
+            action: vec![api_call.api.clone()],
+            resource,
+        }
+    }
+}
+
 #[derive(Debug, Deserialize, Serialize)]
+#[serde(rename_all = "PascalCase")]
 pub struct Policy {
-    #[serde(rename = "Version")]
     pub version: String,
-    #[serde(rename = "Statement")]
     pub statement: Vec<Statement>,
+}
+
+pub struct PolicyBuilder {
+    policy: Policy,
+}
+
+impl PolicyBuilder {
+    pub fn new() -> Self {
+        PolicyBuilder {
+            policy: Policy {
+                version: "2012-10-17".to_string(),
+                statement: Vec::new(),
+            },
+        }
+    }
+
+    pub fn add_statement(mut self, statement: Statement) -> Self {
+        self.policy.statement.push(statement);
+        self
+    }
+
+    pub fn build(self) -> Policy {
+        self.policy
+    }
 }
 
 #[cfg(test)]
