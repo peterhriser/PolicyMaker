@@ -2,6 +2,9 @@ use serde_json::Value;
 use std::env;
 use std::net::UdpSocket;
 
+mod csm;
+mod iam;
+
 fn main() -> std::io::Result<()> {
     // Read the host and port from environment variables with defaults
     let host = env::var("HOST").unwrap_or_else(|_| "0.0.0.0".to_string());
