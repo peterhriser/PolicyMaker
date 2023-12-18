@@ -2,14 +2,14 @@ use std::fmt::Display;
 
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Deserialize, Serialize, PartialEq)]
+#[derive(Debug, Deserialize, Serialize, PartialEq, Clone)]
 pub enum ApiCallType {
     ApiCall,
     ApiCallAttempt,
     #[serde(other)]
     Other,
 }
-#[derive(Debug, Deserialize, Serialize, PartialEq)]
+#[derive(Debug, Deserialize, Serialize, PartialEq, Clone)]
 #[serde(rename_all = "UPPERCASE")]
 pub enum ApiCallService {
     Sts,
@@ -34,7 +34,7 @@ impl Display for ApiCallService {
     }
 }
 
-#[derive(Debug, Deserialize, Serialize, PartialEq)]
+#[derive(Debug, Deserialize, Serialize, PartialEq, Clone)]
 pub enum ApiCallRegion {
     #[serde(rename = "us-west-1")]
     UsWest1,
@@ -44,11 +44,11 @@ pub enum ApiCallRegion {
     UsEast1,
 }
 
-#[derive(Debug, Deserialize, Serialize, PartialEq)]
+#[derive(Debug, Deserialize, Serialize, PartialEq, Clone)]
 #[serde(rename_all = "PascalCase")]
 pub struct ApiCall {
     pub api: String,
-    pub region: ApiCallRegion,
+    pub region: Option<ApiCallRegion>,
     pub service: ApiCallService,
     #[serde(rename = "Type")]
     pub type_: ApiCallType,
@@ -76,7 +76,7 @@ mod test {
 }"#;
         let api_call = serde_json::from_str::<ApiCall>(&json).unwrap();
         assert_eq!(api_call.api, "ListObjectsV2");
-        assert_eq!(api_call.region, ApiCallRegion::UsWest2);
+        assert_eq!(api_call.region, Some(ApiCallRegion::UsWest2));
         assert_eq!(api_call.service, ApiCallService::S3);
         assert_eq!(api_call.type_, ApiCallType::ApiCall);
     }
@@ -99,7 +99,7 @@ mod test {
 }"#;
         let api_call = serde_json::from_str::<ApiCall>(&json).unwrap();
         assert_eq!(api_call.api, "ListObjectsV2");
-        assert_eq!(api_call.region, ApiCallRegion::UsWest2);
+        assert_eq!(api_call.region, Some(ApiCallRegion::UsWest2));
         assert_eq!(api_call.service, ApiCallService::Other);
         assert_eq!(api_call.type_, ApiCallType::Other);
     }
