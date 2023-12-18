@@ -1,18 +1,26 @@
+use std::env;
 use std::net::UdpSocket;
 use std::sync::mpsc::{channel, RecvTimeoutError};
 use std::thread::sleep;
-use std::{env, process::exit};
 
 use crate::csm::ApiCall;
-use tracing::{debug, info};
+use tracing::{debug, error};
 use tracing_subscriber;
 mod csm;
 mod iam;
 
 fn main() -> std::io::Result<()> {
     // Read the host and port from environment variables with defaults
+    let log_level = env::var("LOG_LEVEL").unwrap_or_else(|_| "info".to_string());
+    let tracing_level = match log_level.as_str() {
+        "debug" => tracing::Level::DEBUG,
+        "info" => tracing::Level::INFO,
+        "warn" => tracing::Level::WARN,
+        "error" => tracing::Level::ERROR,
+        _ => tracing::Level::INFO,
+    };
     tracing_subscriber::fmt()
-        .with_max_level(tracing::Level::DEBUG)
+        .with_max_level(tracing_level)
         .init();
     let host = env::var("HOST").unwrap_or_else(|_| "0.0.0.0".to_string());
     let port_str = env::var("PORT").unwrap_or_else(|_| "31000".to_string());
@@ -30,13 +38,13 @@ fn main() -> std::io::Result<()> {
 
     let (tx, rx) = channel();
     ctrlc::set_handler(move || {
-        println!("Received Ctrl-C. Exiting.");
+        println!("Received Ctrl-C. Exiting...");
         tx.send(()).expect("Could not send signal on channel.")
     })
     .expect("Error setting Ctrl-C handler");
     loop {
         // Receive data from the socket
-        let (num_bytes, peer_addr) = match socket.recv_from(&mut buf) {
+        let (num_bytes, _) = match socket.recv_from(&mut buf) {
             Ok((num_bytes, peer_addr)) => (num_bytes, peer_addr),
             Err(ref err) if err.kind() == std::io::ErrorKind::WouldBlock => {
                 sleep(std::time::Duration::from_millis(50));
@@ -59,28 +67,29 @@ fn main() -> std::io::Result<()> {
                 let _ = &policy_builder.add_api_call(&json);
             }
             Err(err) => {
-                eprintln!(
-                    "Error parsing JSON from {}: {}, {}",
-                    peer_addr, err, &received_data
-                );
+                Err(std::io::Error::new(
+                    std::io::ErrorKind::Other,
+                    format!("Error parsing JSON, {}", err),
+                ))?;
             }
         }
         match rx.recv_timeout(std::time::Duration::from_millis(1000)) {
             Ok(_) => {
-                info!("Received Ctrl-C. Exiting.");
                 let policy = policy_builder.build();
                 let policy = serde_json::to_string_pretty(&policy).unwrap();
                 println!("{}", policy);
-                exit(0)
+                return Ok(());
             }
             Err(RecvTimeoutError::Timeout) => (),
             Err(err) => {
-                eprintln!("Error receiving signal: {}", err);
-                exit(1)
+                error!("Error receiving signal: {}", err);
+                return Err(std::io::Error::new(
+                    std::io::ErrorKind::Other,
+                    format!("Error receiving signal, {}", err),
+                ));
             }
         }
     }
-    Ok(())
 }
 
 #[cfg(test)]
