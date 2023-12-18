@@ -1,0 +1,3 @@
+[submodule "aws"]
+	path = aws
+	url = https://github.com/iann0036/iam-dataset.git

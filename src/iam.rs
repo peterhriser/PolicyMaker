@@ -10,7 +10,7 @@ pub struct Statement {
 
 impl From<&crate::csm::ApiCall> for Statement {
     fn from(api_call: &crate::csm::ApiCall) -> Self {
-        let resource = vec![format!("arn::aws::{}**", api_call.service)];
+        let resource = vec!["*".to_string()];
         Statement {
             effect: "Allow".to_string(),
             action: vec![api_call.api.clone()],
@@ -39,7 +39,11 @@ impl PolicyBuilder {
             },
         }
     }
-
+    pub fn add_api_call(mut self, api_call: &crate::csm::ApiCall) -> Self {
+        let statement = Statement::from(api_call);
+        self.policy.statement.push(statement);
+        self
+    }
     pub fn add_statement(mut self, statement: Statement) -> Self {
         self.policy.statement.push(statement);
         self
@@ -94,5 +98,15 @@ mod tests {
             policy.statement[0].resource[0],
             json_val["Statement"][0]["Resource"][0]
         );
+    }
+}
+
+fn match_api_call_to_iam_action(api_call: &crate::csm::ApiCall) -> String {
+    match api_call.service {
+        crate::csm::ApiCallService::S3 => match api_call.api.as_str() {
+            "ListObjectsV2" => "s3:ListBucket".to_string(),
+            _ => "s3:*".to_string(),
+        },
+        _ => "s3:*".to_string(),
     }
 }
