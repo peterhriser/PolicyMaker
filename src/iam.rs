@@ -191,14 +191,18 @@ mod test {
                 }
             }
         ]}}"#;
-        let aws_map_ = serde_json::from_str::<super::AwsMappings>(test_map).unwrap();
+        let map = serde_json::from_str::<super::AwsMappings>(test_map).unwrap();
+        assert_eq!(
+            map.sdk_method_iam_mappings["Budgets.CreateBudget"][0].action,
+            "budgets:ModifyBudget"
+        );
     }
 
     #[test]
     fn test_parse_real_map() {
         let aws_map_ = serde_json::from_str::<Value>(super::AWS_MAP_FILE).unwrap();
         for (key, value) in aws_map_["sdk_method_iam_mappings"].as_object().unwrap() {
-            let AwsMap = match serde_json::from_value::<Vec<super::AwsMap>>(value.clone()) {
+            let _ = match serde_json::from_value::<Vec<super::AwsMap>>(value.clone()) {
                 Ok(map) => map,
                 Err(err) => {
                     eprintln!("Error parsing {}: {}\n {}", key, value, err);
